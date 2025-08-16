@@ -56,6 +56,7 @@ async def descargar_archivo(context, url, nombre):
         return ruta_archivo
     return None
 
+# ---------------- Función corregida para extraer productos ----------------
 def extraer_todo_pdf(ruta_pdf):
     resultados = []
     fecha = ""
@@ -70,28 +71,46 @@ def extraer_todo_pdf(ruta_pdf):
                     parts = linea.split(":")
                     if len(parts) > 1:
                         fecha = parts[1].strip()
+
                 columnas = linea.split()
-                if len(columnas) >= 6:
-                    prod_nombre = " ".join(columnas[:-6])
-                    if prod_nombre.lower().startswith("producto") or not prod_nombre.strip():
-                        continue
-                    unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
-                    resultados.append(OrderedDict([
-                        ("producto", prod_nombre),
-                        ("unidad", unidad),
-                        ("mayorista", mayorista),
-                        ("minimo", minimo),
-                        ("maximo", maximo),
-                        ("moda", moda),
-                        ("promedio", promedio),
-                        ("fecha", fecha)
-                    ]))
+                if len(columnas) < 5:  # mínimo producto + unidad + 4 valores
+                    continue
+
+                # Últimos 4 elementos → valores numéricos
+                valores = columnas[-4:]
+                try:
+                    minimo = float(valores[0].replace(",", ""))
+                    maximo = float(valores[1].replace(",", ""))
+                    moda = float(valores[2].replace(",", ""))
+                    promedio = float(valores[3].replace(",", ""))
+                except ValueError:
+                    continue
+
+                # Elemento anterior → unidad/mayorista
+                mayorista = columnas[-5]
+
+                # Todo lo que queda al inicio → nombre del producto
+                prod_nombre = " ".join(columnas[:-5])
+
+                if not prod_nombre.strip() or prod_nombre.lower().startswith("producto"):
+                    continue
+
+                resultados.append(OrderedDict([
+                    ("producto", prod_nombre),
+                    ("unidad", mayorista),
+                    ("mayorista", mayorista),
+                    ("minimo", str(minimo)),
+                    ("maximo", str(maximo)),
+                    ("moda", str(moda)),
+                    ("promedio", str(promedio)),
+                    ("fecha", fecha)
+                ]))
     return resultados
 
 # ---------------- Corregir orden por fecha ----------------
 def parse_fecha(fecha_str):
     try:
-        return datetime.strptime(fecha_str, "%d/%m/%Y")  # Ajusta formato según tu PDF
+        return datetime.strptime(fecha_str, "%d/%m/%Y")
     except:
         return datetime.min
 
@@ -125,10 +144,8 @@ async def main_scraping():
         resultados = extraer_todo_pdf(pdf_path)
         todos_resultados.extend(resultados)
 
-    # Ordenar cronológicamente por fecha
     todos_resultados.sort(key=lambda x: parse_fecha(x["fecha"]), reverse=True)
 
-    # Guardar JSON con caracteres especiales
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(todos_resultados, f, ensure_ascii=False, indent=2)
 
@@ -157,7 +174,6 @@ def obtener_precios():
     if os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             datos = json.load(f)
-        # Usar Response con ensure_ascii=False para caracteres especiales
         return Response(json.dumps(datos, ensure_ascii=False, indent=2), mimetype="application/json")
     else:
         return Response(json.dumps({"error": "No existe el archivo de cache"}, ensure_ascii=False), mimetype="application/json"), 404
