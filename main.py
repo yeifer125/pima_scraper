@@ -4,6 +4,7 @@ import json
 import threading
 import time
 from datetime import datetime
+from collections import OrderedDict
 from flask import Flask, jsonify
 from playwright.async_api import async_playwright
 import pdfplumber
@@ -71,18 +72,18 @@ def extraer_todo_pdf(ruta_pdf):
                         fecha = parts[1].strip()
                 columnas = linea.split()
                 if len(columnas) >= 6:
-                prod_nombre = " ".join(columnas[:-6])
-                unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
-                resultados.append({
-                        "producto": prod_nombre,
-                        "unidad": unidad,
-                        "mayorista": mayorista,
-                        "minimo": minimo,
-                        "maximo": maximo,
-                        "moda": moda,
-                        "promedio": promedio,
-                        "fecha": fecha
-                         })
+                    prod_nombre = " ".join(columnas[:-6])
+                    unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
+                    resultados.append(OrderedDict([
+                        ("producto", prod_nombre),
+                        ("unidad", unidad),
+                        ("mayorista", mayorista),
+                        ("minimo", minimo),
+                        ("maximo", maximo),
+                        ("moda", moda),
+                        ("promedio", promedio),
+                        ("fecha", fecha)
+                    ]))
     return resultados
 
 # ---------------- Función principal de scraping ----------------
