@@ -71,9 +71,9 @@ def extraer_todo_pdf(ruta_pdf):
                         fecha = parts[1].strip()
                 columnas = linea.split()
                 if len(columnas) >= 6:
-                    prod_nombre = " ".join(columnas[:-6])
-                    unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
-                    resultados.append({
+                prod_nombre = " ".join(columnas[:-6])
+                unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
+                resultados.append({
                         "producto": prod_nombre,
                         "unidad": unidad,
                         "mayorista": mayorista,
@@ -82,7 +82,7 @@ def extraer_todo_pdf(ruta_pdf):
                         "moda": moda,
                         "promedio": promedio,
                         "fecha": fecha
-                    })
+                         })
     return resultados
 
 # ---------------- Función principal de scraping ----------------
