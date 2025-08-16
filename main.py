@@ -74,14 +74,14 @@ def extraer_todo_pdf(ruta_pdf):
                     prod_nombre = " ".join(columnas[:-6])
                     unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
                     resultados.append({
-                        "fecha": fecha,
                         "producto": prod_nombre,
                         "unidad": unidad,
                         "mayorista": mayorista,
                         "minimo": minimo,
                         "maximo": maximo,
                         "moda": moda,
-                        "promedio": promedio
+                        "promedio": promedio,
+                        "fecha": fecha
                     })
     return resultados
 
