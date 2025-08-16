@@ -1,11 +1,14 @@
 import asyncio
 import os
 import json
+import threading
+import time
 from datetime import datetime
 from flask import Flask, jsonify
 from playwright.async_api import async_playwright
 import pdfplumber
 
+# ---------------- Rutas de archivos ----------------
 PDF_FOLDER = os.path.join(os.path.dirname(__file__), "pdfs")
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "datos_cache.json")
 
@@ -121,13 +124,15 @@ async def main_scraping():
     print(f"[{datetime.now()}] Datos actualizados: {len(todos_resultados)} productos guardados en '{CACHE_FILE}'.")
 
 # ---------------- Tarea periódica cada 24h ----------------
-async def tarea_periodica():
+def tarea_periodica():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     while True:
         try:
-            await main_scraping()
+            loop.run_until_complete(main_scraping())
         except Exception as e:
             print(f"[ERROR] Falló la actualización: {e}")
-        await asyncio.sleep(24 * 60 * 60)  # 24 horas
+        time.sleep(24 * 60 * 60)  # 24 horas
 
 # ---------------- API Flask ----------------
 app = Flask(__name__)
@@ -143,16 +148,20 @@ def obtener_precios():
             datos = json.load(f)
         return jsonify(datos)
     else:
-        return jsonify({"error": "Cache aún no generado. Intenta en unos segundos."}), 503
+        return jsonify({"error": "No existe el archivo de cache"}), 404
 
 # ---------------- Ejecutar ----------------
 if __name__ == "__main__":
-    # 1️⃣ Ejecutar scraping inicial antes de levantar Flask
-    asyncio.run(main_scraping())
+    # Scraping inicial seguro en Python 3.11+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main_scraping())
+    except Exception as e:
+        print(f"[ERROR] Falló la actualización inicial: {e}")
 
-    # 2️⃣ Ejecutar scraping periódico en segundo plano
-    loop = asyncio.get_event_loop()
-    loop.create_task(tarea_periodica())
+    # Scraping periódico cada 24h en hilo separado
+    threading.Thread(target=tarea_periodica, daemon=True).start()
 
-    # 3️⃣ Iniciar Flask
+    # Levantar Flask
     app.run(host="0.0.0.0", port=5000)
