@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     wget curl ca-certificates fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------- Configurar directorio de trabajo ----------------
+# ---------------- Directorio de trabajo ----------------
 WORKDIR /app
 COPY . /app
 
