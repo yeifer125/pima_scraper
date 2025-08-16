@@ -73,6 +73,9 @@ def extraer_todo_pdf(ruta_pdf):
                 columnas = linea.split()
                 if len(columnas) >= 6:
                     prod_nombre = " ".join(columnas[:-6])
+                    # Ignorar encabezados o productos vacíos
+                    if prod_nombre.lower().startswith("producto") or not prod_nombre.strip():
+                        continue
                     unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
                     resultados.append(OrderedDict([
                         ("producto", prod_nombre),
