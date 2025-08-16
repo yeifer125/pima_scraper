@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime
 from collections import OrderedDict
-from flask import Flask, jsonify
+from flask import Flask, Response
 from playwright.async_api import async_playwright
 import pdfplumber
 
@@ -73,7 +73,6 @@ def extraer_todo_pdf(ruta_pdf):
                 columnas = linea.split()
                 if len(columnas) >= 6:
                     prod_nombre = " ".join(columnas[:-6])
-                    # Ignorar encabezados o productos vacíos
                     if prod_nombre.lower().startswith("producto") or not prod_nombre.strip():
                         continue
                     unidad, mayorista, minimo, maximo, moda, promedio = columnas[-6:]
@@ -88,6 +87,13 @@ def extraer_todo_pdf(ruta_pdf):
                         ("fecha", fecha)
                     ]))
     return resultados
+
+# ---------------- Corregir orden por fecha ----------------
+def parse_fecha(fecha_str):
+    try:
+        return datetime.strptime(fecha_str, "%d/%m/%Y")  # Ajusta formato según tu PDF
+    except:
+        return datetime.min
 
 # ---------------- Función principal de scraping ----------------
 async def main_scraping():
@@ -119,9 +125,10 @@ async def main_scraping():
         resultados = extraer_todo_pdf(pdf_path)
         todos_resultados.extend(resultados)
 
-    todos_resultados.sort(key=lambda x: x["fecha"], reverse=True)
+    # Ordenar cronológicamente por fecha
+    todos_resultados.sort(key=lambda x: parse_fecha(x["fecha"]), reverse=True)
 
-    # Guardar JSON
+    # Guardar JSON con caracteres especiales
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(todos_resultados, f, ensure_ascii=False, indent=2)
 
@@ -136,7 +143,7 @@ def tarea_periodica():
             loop.run_until_complete(main_scraping())
         except Exception as e:
             print(f"[ERROR] Falló la actualización: {e}")
-        time.sleep(24 * 60 * 60)  # 24 horas
+        time.sleep(24 * 60 * 60)
 
 # ---------------- API Flask ----------------
 app = Flask(__name__)
@@ -150,13 +157,13 @@ def obtener_precios():
     if os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             datos = json.load(f)
-        return jsonify(datos)
+        # Usar Response con ensure_ascii=False para caracteres especiales
+        return Response(json.dumps(datos, ensure_ascii=False, indent=2), mimetype="application/json")
     else:
-        return jsonify({"error": "No existe el archivo de cache"}), 404
+        return Response(json.dumps({"error": "No existe el archivo de cache"}, ensure_ascii=False), mimetype="application/json"), 404
 
 # ---------------- Ejecutar ----------------
 if __name__ == "__main__":
-    # Scraping inicial seguro en Python 3.11+
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -164,8 +171,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[ERROR] Falló la actualización inicial: {e}")
 
-    # Scraping periódico cada 24h en hilo separado
     threading.Thread(target=tarea_periodica, daemon=True).start()
-
-    # Levantar Flask
     app.run(host="0.0.0.0", port=5000)
