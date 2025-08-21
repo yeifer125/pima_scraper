@@ -160,7 +160,7 @@ def tarea_periodica():
             loop.run_until_complete(main_scraping())
         except Exception as e:
             print(f"[ERROR] Falló la actualización: {e}")
-        time.sleep(10 * 60 * 60)
+        time.sleep(3 * 60 * 60)
 
 # ---------------- API Flask ----------------
 app = Flask(__name__)
